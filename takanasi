@@ -1,0 +1,183 @@
+-- Rayfield UI読み込み
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Window = Rayfield:CreateWindow({
+    Name = "じゃがHub",
+    LoadingTitle = "",
+    LoadingSubtitle = "",
+    ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "JagaHubConfig" }
+})
+
+local Main = Window:CreateTab("Main", 4483362458)
+
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+local uis = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+local mouse = player:GetMouse()
+
+local vehicle = nil
+humanoid.Seated:Connect(function(active, seat)
+    if active and seat:IsA("VehicleSeat") then
+        vehicle = seat.Parent
+    else
+        vehicle = nil
+    end
+end)
+
+-- フライ (速度35固定)
+local flying = false
+local speed = 35
+Main:CreateToggle({
+    Name = "フライ",
+    CurrentValue = false,
+    Callback = function(Value)
+        flying = Value
+    end
+})
+runService.RenderStepped:Connect(function()
+    if flying then
+        local cam = workspace.CurrentCamera
+        local moveDir = Vector3.new()
+        if uis:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0,1,0) end
+        if uis:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir += Vector3.new(0,-1,0) end
+        if moveDir.Magnitude > 0 then
+            if vehicle and vehicle.PrimaryPart then
+                vehicle.PrimaryPart.Velocity = moveDir.Unit * speed
+            else
+                hrp.Velocity = moveDir.Unit * speed
+            end
+        end
+    end
+end)
+
+-- 歩行速度
+Main:CreateSlider({
+    Name = "歩行速度",
+    Range = {16, 200},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = 16,
+    Callback = function(Value)
+        humanoid.WalkSpeed = Value
+    end
+})
+
+-- ジャンプ力
+Main:CreateSlider({
+    Name = "ジャンプ力",
+    Range = {50, 300},
+    Increment = 1,
+    Suffix = "Power",
+    CurrentValue = 50,
+    Callback = function(Value)
+        humanoid.UseJumpPower = true
+        humanoid.JumpPower = Value
+    end
+})
+
+-- Noclip
+local noclip = false
+Main:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Callback = function(Value)
+        noclip = Value
+    end
+})
+runService.Stepped:Connect(function()
+    if noclip and char then
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- ESP
+Main:CreateButton({
+    Name = "ESP",
+    Callback = function()
+        for _, plr in pairs(game.Players:GetPlayers()) do
+            if plr ~= player then
+                local highlight = Instance.new("Highlight")
+                highlight.Adornee = plr.Character
+                highlight.Parent = plr.Character
+                highlight.FillColor = Color3.new(1,0,0)
+                highlight.OutlineColor = Color3.new(1,1,1)
+            end
+        end
+    end
+})
+
+-- Float
+local floatPart = Instance.new("Part")
+floatPart.Size = Vector3.new(6,1,6)
+floatPart.Anchored = true
+floatPart.Transparency = 1
+floatPart.CanCollide = true
+floatPart.Parent = workspace
+local floating = false
+Main:CreateToggle({
+    Name = "Float",
+    CurrentValue = false,
+    Callback = function(Value)
+        floating = Value
+    end
+})
+runService.RenderStepped:Connect(function()
+    if floating and char and hrp then
+        floatPart.Position = hrp.Position - Vector3.new(0,3,0)
+    end
+end)
+
+-- 透明化
+Main:CreateButton({
+    Name = "透明化",
+    Callback = function()
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 0.5
+            elseif part:IsA("Decal") then
+                part.Transparency = 0.5
+            end
+        end
+    end
+})
+
+-- 目の前TP
+Main:CreateButton({
+    Name = "目の前TP",
+    Callback = function()
+        if mouse.Hit then
+            local targetPos = mouse.Hit.Position + Vector3.new(0,3,0)
+            if char and char.PrimaryPart then
+                char:SetPrimaryPartCFrame(CFrame.new(targetPos))
+            end
+        end
+    end
+})
+
+-- 完全透明
+Main:CreateButton({
+    Name = "完全透明",
+    Callback = function()
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+                part.CanCollide = true
+            elseif part:IsA("Decal") then
+                part.Transparency = 1
+            end
+        end
+        humanoid.Died:Connect(function()
+            -- 死んだら解除される
+        end)
+    end
+})
